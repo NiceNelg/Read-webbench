@@ -1,0 +1,68 @@
+/* $Id: socket.c 1.1 1995/01/01 07:11:14 cthuang Exp $
+ *
+ * This module has been modified by Radim Kolar for OS/2 emx
+ */
+
+/***********************************************************************
+  module:       socket.c
+  program:      popclient
+  SCCS ID:      @(#)socket.c    1.5  4/1/94
+  programmer:   Virginia Tech Computing Center
+  compiler:     DEC RISC C compiler (Ultrix 4.1)
+  environment:  DEC Ultrix 4.3 
+  description:  UNIX sockets code.
+ ***********************************************************************/
+ 
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <fcntl.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <sys/time.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+
+//socket连接封装函数
+int Socket(const char *host, int clientPort)
+{
+    //socket连接文件句柄
+    int sock;
+    //目标IP地址
+    unsigned long inaddr;
+    //Socket连接结构体
+    struct sockaddr_in ad;
+    //host结构体
+    struct hostent *hp;
+
+    //重置Socket结构体，保证没有未知初始值影响
+    memset(&ad, 0, sizeof(ad));
+    ad.sin_family = AF_INET;
+
+    //检测host是否正确，若正确则复制到Socket结构体中
+    inaddr = inet_addr(host);
+    if (inaddr != INADDR_NONE) {
+        memcpy(&ad.sin_addr, &inaddr, sizeof(inaddr));
+    }
+    else {
+        //若检测不到正确的host，尝试使用gethostname函数解析，若解析成功则复制到Socket结构体中，否则返回错误码-1
+        hp = gethostbyname(host);
+        if (hp == NULL)
+            return -1;
+        memcpy(&ad.sin_addr, hp->h_addr, hp->h_length);
+    }
+    ad.sin_port = htons(clientPort);
+    
+    sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock < 0) {
+        return sock;
+    }
+    if (connect(sock, (struct sockaddr *)&ad, sizeof(ad)) < 0) {
+        return -1;
+    }
+    return sock;
+}
+
